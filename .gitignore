@@ -54,3 +54,10 @@ dkms.conf
 # Files
 ex2.txt
 ex2unix.txt
+.idea/
+CMakeLists.txt
+cmake-build-debug/
+main.c
+makefile
+unix_input-utf-16.txt
+unix_input-utf-16_to_mac.txt
