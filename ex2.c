@@ -24,7 +24,6 @@ int main(int argc, char const *argv[]) {
             // this is the simple case
             firstCase(argc, argv, file, newFile);
         } else if (argc == 5 || argc == 6) {
-            printf("here1\n");
             // checking both the second and third cases
             secondAndThirdCase(argc, argv, file, newFile);
         }
@@ -74,17 +73,8 @@ void secondAndThirdCase(int argc, char const* argv[], FILE* file, FILE* newFile)
     // write the bytes into the new file
     fwrite(&arr , sizeof(arr[0]) , sizeof(arr)/sizeof(arr[0]), newFile);
 
-
-    int i = 1;
-
     // read the file two byte by two byte
     while (fread(&arr, sizeof(arr), 1, file)) {
-
-        if(isBigEndian == 0 && u[0] == 0x0d && u[1] == 0x00) {
-            printf("num: %d\n", i);
-            i++;
-        }
-
         //printf("%02hhX %02hhX\n", u[1], u[0]);
 
         // if the source and dest are equal system then there is no point to check '\r' or '\n'
@@ -97,7 +87,7 @@ void secondAndThirdCase(int argc, char const* argv[], FILE* file, FILE* newFile)
                 carriageReturnCase(argc, argv, &file, &newFile, isBigEndian, arr);
             } else if((isBigEndian == 1 && u[0] == 0x00 && u[1] == 0x0a) ||
             (isBigEndian == 0 && u[0] == 0x0a && u[1] == 0x00)) {
-                printf("here2\n");
+                //printf("here2\n");
                 // handle with case of '\n'
                 lineFeedCase(argc, argv, &file, &newFile, isBigEndian, arr);
             }
@@ -108,7 +98,7 @@ void secondAndThirdCase(int argc, char const* argv[], FILE* file, FILE* newFile)
             u[1] = u[0] ^ u[1];
             u[0] = u[0] ^ u[1];
         }
-        printf("%s", arr);
+        //printf("%s", arr);
         // write the bytes into the new file
         fwrite(&arr , sizeof(arr[0]) , sizeof(arr)/sizeof(arr[0]), newFile);
     }
@@ -116,56 +106,53 @@ void secondAndThirdCase(int argc, char const* argv[], FILE* file, FILE* newFile)
 
 
 void carriageReturnCase(int argc, char const* argv[], FILE** file, FILE** newFile, int isBig, char* arr) {
-    printf("here3\n");
-    unsigned char* u = (char*)&arr;
+    char tempArr[2];
     if (strcmp(argv[3], "-win") == 0) {
-        printf("here4\n");
-        if (strcmp(argv[4], "-unix") == 0) {
+        if (strcmp(argv[4], "-unix") == 0 && fread(&tempArr , 2, 1, *file)) {
+            printf("here2\n");
             // then jump to next 2 byte
-            fread(&arr , 2, 1, *file);
+            arr[0] = tempArr[0];
+            arr[1] = tempArr[1];
         }
     } else if (strcmp(argv[3], "-mac") == 0) {
         if (strcmp(argv[4], "-unix") == 0) {
             // if the destination is unix then change the '\r' to '\n'
             if (isBig) {
-                u[0] = 0x00; u[1] = 0x0a;
+                arr[0] = 0x00; arr[1] = 0x0a;
             } else if(!isBig) {
-                u[0] = 0x0a; u[1] = 0x00;
+                arr[0] = 0x0a; arr[1] = 0x00;
             }
         } else if (strcmp(argv[4], "-win") == 0) {
             // if the dest is win then write the '\r' to the file,
             // and then change the '\r' to '\n'
             // And before this' checking how to write the bytes
+            char temp[] = {arr[0], arr[1]};
             if(argc >= 6 && strcmp(argv[5], "-swap") == 0) {
-                u[0] = u[0] ^ u[1];
-                u[1] = u[0] ^ u[1];
-                u[0] = u[0] ^ u[1];
+                temp[0] = temp[0] ^ temp[1];
+                temp[1] = temp[0] ^ temp[1];
+                temp[0] = temp[0] ^ temp[1];
             }
-            fwrite(&arr , sizeof(arr[0]) , sizeof(*arr)/sizeof(arr[0]), *newFile);
+            fwrite(&temp , sizeof(temp[0]) , sizeof(temp)/sizeof(temp[0]), *newFile);
             // after writing '\r', changing the value in the array to '\n',
             // because it's needed to be added to the new file
             if (isBig) {
-                u[0] = 0x00; u[1] = 0x0a;
+                arr[0] = 0x00; arr[1] = 0x0a;
             } else if(!isBig) {
-                u[0] = 0x0a; u[1] = 0x00;
+                arr[0] = 0x0a; arr[1] = 0x00;
             }
         }
     }
 }
 
 void lineFeedCase(int argc, char const* argv[], FILE** file, FILE** newFile, int isBig, char* arr) {
-    unsigned char* u = (char*)&arr;
     char tempArr[2];
     if (strcmp(argv[3], "-win") == 0) {
-        if (strcmp(argv[4], "-mac") == 0) {
+        if (strcmp(argv[4], "-mac") == 0 && fread(&tempArr, 2, 1, *file)) {
             // then jump to next 2 byte, because there is on '\n' in mac
-            printf("here5\n");
-            fread(&tempArr, 2, 1, *file);
-            //printf("%x %x\n",u[0], u[1]);
+            arr[0] = tempArr[0];
+            arr[1] = tempArr[1];
         }
-        arr[0] = tempArr[0];
-        arr[1] = tempArr[1];
-        //printf("%s\n", arr);
+
     } else if(strcmp(argv[3], "-unix") == 0) {
         if(strcmp(argv[4], "-mac") == 0) {
             // if the destination is mac then change the '\n' to '\r'
@@ -181,25 +168,18 @@ void lineFeedCase(int argc, char const* argv[], FILE** file, FILE** newFile, int
             if (isBig == 1 && argc >= 6 && strcmp(argv[5], "-swap") == 0) {
                 temp[0] = 0x0d;
                 temp[1] = 0x00;
-                fwrite(&temp , sizeof(temp[0]) , sizeof(temp)/sizeof(temp[0]), *newFile);
-
             } else if (isBig == 0 && argc >= 6 && strcmp(argv[5], "-swap") == 0) {
                 temp[0] = 0x00;
                 temp[1] = 0x0d;
-                fwrite(&temp , sizeof(temp[0]) , sizeof(temp)/sizeof(temp[0]), *newFile);
-
-            } else if (isBig == 1 && argc >= 6 && strcmp(argv[5], "-swap") != 0) {
-                printf("here6\n");
-
+            } else if (isBig == 1) {
                 temp[0] = 0x00;
                 temp[1] = 0x0d;
-                fwrite(&temp , sizeof(temp[0]) , sizeof(temp)/sizeof(temp[0]), *newFile);
-
-            } else if (isBig == 0 && argc >= 6 && strcmp(argv[5], "-swap") != 0) {
+            } else {
+                // if 'isBig == 0'
                 temp[0] = 0x0d;
                 temp[1] = 0x00;
-                fwrite(&temp , sizeof(temp[0]) , sizeof(temp)/sizeof(temp[0]), *newFile);
             }
+            fwrite(&temp , sizeof(temp[0]) , sizeof(temp)/sizeof(temp[0]), *newFile);
         }
     }
 
