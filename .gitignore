@@ -61,3 +61,12 @@ main.c
 makefile
 unix_input-utf-16.txt
 unix_input-utf-16_to_mac.txt
+mac_input-utf-16.txt
+mac_input-utf-16_keep.txt
+mac_input-utf-16_swap.txt
+testsV3
+unix_input-utf-16_keep.txt
+unix_input-utf-16_swap.txt
+win_input-utf-16.txt
+win_input-utf-16_keep.txt
+win_input-utf-16_swap.txt
