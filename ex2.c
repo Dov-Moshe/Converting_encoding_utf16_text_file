@@ -20,18 +20,24 @@ int main(int argc, char const *argv[]) {
         if (file == NULL) {
             return 1;
         }
-        // open the write file
-        FILE *newFile;
-        newFile = fopen(argv[2], "w");
         if(argc == 3) {
+            // open the write file
+            FILE *newFile;
+            newFile = fopen(argv[2], "w");
             // this is the simple case
             firstCase(file, newFile);
-        } else if (argc == 5 || argc == 6) {
+            fclose(newFile);
+        } else if ((argc == 5 ||argc == 6) &&
+        ((strcmp(argv[3],"-win") || strcmp(argv[3],"-mac") || strcmp(argv[3],"unix")) &&
+        (strcmp(argv[4],"-win") || strcmp(argv[4],"-mac") || strcmp(argv[4],"unix")))) {
+            // open the write file
+            FILE *newFile;
+            newFile = fopen(argv[2], "w");
             // checking both the second and third cases
             secondAndThirdCase(argc, argv, file, newFile);
+            fclose(newFile);
         }
         fclose(file);
-        fclose(newFile);
     }
     return 0;
 }
@@ -47,11 +53,13 @@ void firstCase(FILE* file, FILE* newFile) {
 }
 
 /**
- *
- * @param argc
- * @param argv
- * @param file
- * @param newFile
+ * The function is for the second and third cases.
+ * first the func checks the BOM and determinants if the file is big or little endian.
+ * After, the 'do while' loop to over on all the bytes is the source file, the use with this loop is to write the
+ * BOM inside the loop.
+ * The method is to read from the file two bytes by two bytes and check for them what it's need to be checked.
+ * If the bytes are '\r' or '\n' the calling to the functions "carriageReturnCase" or "lineFeedCase".
+ * If not, then continue and checking if to swap the bytes and writing into the file.
  */
 void secondAndThirdCase(int argc, char const* argv[], FILE* file, FILE* newFile) {
     // to get two byte by two byte from the file
@@ -64,15 +72,6 @@ void secondAndThirdCase(int argc, char const* argv[], FILE* file, FILE* newFile)
     if(u[0] == 0xff && u[1] == 0xfe) {
         isBigEndian = 0;
     }
-    /*// if it is needed to swap the endianness
-    if(argc >= 6 && strcmp(argv[5], "-swap") == 0) {
-        u[0] = u[0] ^ u[1];
-        u[1] = u[0] ^ u[1];
-        u[0] = u[0] ^ u[1];
-    }
-    // write the bytes into the new file
-    fwrite(&arr , sizeof(arr[0]) , sizeof(arr)/sizeof(arr[0]), newFile);*/
-
     // read the file two byte by two byte
     do {
         // if the source and dest are equal system then there is no point to check '\r' or '\n'
@@ -101,24 +100,36 @@ void secondAndThirdCase(int argc, char const* argv[], FILE* file, FILE* newFile)
 }
 
 /**
- *
- * @param argc
- * @param argv
- * @param file
- * @param newFile
- * @param isBig
- * @param arr
+ * The function is for the case that the character is '\r'.
+ * If the source file is windows then go to first 'if'.
+ * Else, if the source file is mac then go to second 'if'.
+ * Else, the func do nothing.
  */
 void carriageReturnCase(int argc, char const* argv[], FILE** file, FILE** newFile, int isBig, char* arr) {
     char tempArr[2];
     if (strcmp(argv[3], "-win") == 0) {
-        if (strcmp(argv[4], "-unix") == 0 && fread(&tempArr , 2, 1, *file)) {
+        fread(&tempArr , 2, 1, *file);
+        // if the next char is not '\n'
+        if ((isBig == 1 && tempArr[0] != 0x00 && tempArr[0] != 0x0a) ||
+        (isBig == 0 && tempArr[0] != 0x0a && tempArr[0] != 0x00)) {
+            // then '\r' and the next char need to be writen
+            // so write the '\r' to the file, and put the next char into the arr
+            char tempForCR[2];
+            tempForCR[0] = arr[0];
+            tempForCR[1] = arr[1];
+            if(argc >= 6 && strcmp(argv[5], "-swap") == 0) {
+                tempForCR[0] = tempForCR[0] ^ tempForCR[1];
+                tempForCR[1] = tempForCR[0] ^ tempForCR[1];
+                tempForCR[0] = tempForCR[0] ^ tempForCR[1];
+            }
+            fwrite(&tempForCR , sizeof(tempForCR[0]) , sizeof(tempForCR)/sizeof(tempForCR[0]), *newFile);
+            arr[0] = tempArr[0];
+            arr[1] = tempArr[1];
+        } else if (strcmp(argv[4], "-unix") == 0) {
+            // if the next char is '\n'
             // then jump to next 2 byte
             arr[0] = tempArr[0];
             arr[1] = tempArr[1];
-        } else if(strcmp(argv[4], "-mac") == 0) {
-            // just read '\n' and do nothing
-            fread(&tempArr , 2, 1, *file);
         }
     } else if (strcmp(argv[3], "-mac") == 0) {
         if (strcmp(argv[4], "-unix") == 0) {
@@ -151,13 +162,8 @@ void carriageReturnCase(int argc, char const* argv[], FILE** file, FILE** newFil
 }
 
 /**
- *
- * @param argc
- * @param argv
- * @param file
- * @param newFile
- * @param isBig
- * @param arr
+ * The function is for the case that the character is '\n'.
+ * If the source file is unix then go to the 'if'. Else, the func do nothing.
  */
 void lineFeedCase(int argc, char const* argv[], FILE** file, FILE** newFile, int isBig, char* arr) {
     if(strcmp(argv[3], "-unix") == 0) {
